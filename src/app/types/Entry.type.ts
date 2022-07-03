@@ -9,6 +9,7 @@ export interface Entry {
     paymentPercent?: number;
     payment?: number;
     newBalance?: number;
+    newUsage?: number;
     newInterest?: number;
     apply?:boolean;
   }

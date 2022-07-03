@@ -60,7 +60,12 @@ export class CreditEntriesTableComponent implements OnInit {
     lable: 'New Balance',
     decorator: '$',
     aggType: 'sum'
-  }, {
+  },  {
+    name: 'newUsage',
+    lable: 'New Usage',
+    decorator: '%',
+    aggType: 'avg'
+  },{
     name: 'newInterest',
     lable: 'New Interest',
     decorator: '$',
@@ -96,7 +101,7 @@ export class CreditEntriesTableComponent implements OnInit {
   updateDataSource(entries: Entry[]) {
     if (entries) {
       entries.forEach(entry => {
-        entry.usage = entry.balance && entry.limit ? ((entry.balance / entry.limit) * 100) : 0;
+        entry.usage = entry.balance && entry.limit ? (entry.balance / entry.limit) : 0;
         entry.interestAmount = entry.balance && entry.apr ? (entry.balance * entry.apr) / 1200 : 0;
         entry.apply = true;
       });
@@ -153,7 +158,7 @@ export class CreditEntriesTableComponent implements OnInit {
       }, 0);
 
       if (_def.aggType === 'avg')
-        val /= this.dataSource.data.length * 100;
+        val /= this.dataSource.data.length;
     }
     return val;
   }
@@ -191,6 +196,7 @@ export class CreditEntriesTableComponent implements OnInit {
       entry.paymentPercent = entry.payment / (this.available > balanceTotal ? balanceTotal : this.available);
       entry.newBalance = entry.balance - entry.payment;
       entry.newInterest = entry.newBalance ? (entry.newBalance * entry.apr) / 1200 : 0;
+      entry.newUsage = entry.newBalance/entry.limit;
       this.distributetRelPrecentages(sortedData, index, totalInterest, entry.interestRelPercent - entry.paymentPercent);
     });
     this.distributeRemainingBalance(sortedData);
@@ -230,6 +236,7 @@ export class CreditEntriesTableComponent implements OnInit {
         entry.paymentPercent = entry.payment / (this.available > balanceTotal ? balanceTotal : this.available);
         entry.newBalance = entry.balance - entry.payment;
         entry.newInterest = entry.newBalance ? (entry.newBalance * entry.apr) / 1200 : 0;
+        entry.newUsage = entry.newBalance/entry.limit;
       }
     });
   }
