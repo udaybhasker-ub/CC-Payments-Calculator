@@ -8,8 +8,13 @@
         <input matInput [(ngModel)]="available" (keyup.enter)="calculate()" (change)="calculate()" type="number" min="0"
             step="500">
     </mat-form-field>
-    <button mat-raised-button (click)="openEntryDialog()">Add</button>
+    <mat-button-toggle-group name="fontStyle" aria-label="Font Style">
+        <mat-button-toggle value="bold" (click)="leastInterestMode = !leastInterestMode; available && calculate()" 
+        [disabled]="!available" 
+        [checked]="leastInterestMode">Least Interest</mat-button-toggle>
+    </mat-button-toggle-group>
     <!--<button mat-raised-button (click)="clearStorage()">Clear</button>-->
+    
 </div>
 
 <!--<button mat-raised-button (click)="calculate()">Calculate</button>-->
@@ -20,8 +25,10 @@
     <ng-container matColumnDef="{{def.name}}" *ngFor="let def of displayedColumnDefs">
         <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Sort by {{def.name}}">{{def.lable |
             uppercase}}</th>
-        <td mat-cell *matCellDef="let element" [class.result-element]="def.name === 'newBalance'"
-            [class.result-element-secondary]="def.name === 'newInterest'">
+        <td mat-cell *matCellDef="let element" 
+        [class.result-element]="def.name === 'newBalance'"
+        [class.result-element-secondary]="def.name === 'newUsage'"
+        [class.result-element-tertiary]="def.name === 'newInterest'">
             <ng-container
                 *ngIf="element[def.name] 
                 && element[def.name].substring ? 
@@ -39,7 +46,8 @@
         <td mat-footer-cell *matFooterCellDef><b>
                 {{ def.name === 'name' ? 'TOTAL' :
                 (def.aggType=== 'sum' ? (getTotal(def.name) | currency) :
-                (def.aggType=== 'avg' ? (def.name === 'apr' ? (getTotal(def.name)/100 | percent: '1.2-2') : (getTotal(def.name) | percent: '1.2-2')) : ''))}}
+                (def.aggType=== 'avg' ? (def.name === 'apr' ? (getTotal(def.name)/100 | percent: '1.2-2') :
+                (getTotal(def.name) | percent: '1.2-2')) : ''))}}
             </b>
             <div class="footer-desc">&nbsp;
                 <ng-template #rel let-relVal="relVal">
@@ -88,7 +96,11 @@
                 <mat-icon>edit</mat-icon>
             </button>
         </td>
-        <td mat-footer-cell *matFooterCellDef></td>
+        <td mat-footer-cell *matFooterCellDef>
+            <button mat-icon-button  (click)="openEntryDialog()">
+                <mat-icon>add_circle</mat-icon>
+            </button>
+        </td>
     </ng-container>
 
     <!-- Symbol Column -->

@@ -16,8 +16,8 @@ import { MatCheckboxChange } from '@angular/material/checkbox';
 export class CreditEntriesTableComponent implements OnInit {
   dataSource!: MatTableDataSource<Entry>;
   balance: number = 0;
-  available: number = 9177.50;
-  firstTime: boolean = true;
+  available: number = 1000;
+  leastInterestMode: boolean = true;
   displayedColumnDefs = [{
     name: 'name',
     lable: 'Name',
@@ -60,12 +60,12 @@ export class CreditEntriesTableComponent implements OnInit {
     lable: 'New Balance',
     decorator: '$',
     aggType: 'sum'
-  },  {
+  }, {
     name: 'newUsage',
     lable: 'New Usage',
     decorator: '%',
     aggType: 'avg'
-  },{
+  }, {
     name: 'newInterest',
     lable: 'New Interest',
     decorator: '$',
@@ -94,7 +94,6 @@ export class CreditEntriesTableComponent implements OnInit {
     const entries = this.localStorageService.get();
     this.updateDataSource(entries);
     this.dataSource.sort = this.sort;
-    //this.firstTime = false;
     this.cdRef.detectChanges();
   }
 
@@ -124,12 +123,10 @@ export class CreditEntriesTableComponent implements OnInit {
   }
 
   removeCol(entry: Entry) {
-    console.log('Delete ', entry);
     this.openConfirmDialog(entry.name);
   }
 
   editCol(entry: Entry) {
-    console.log('edit ', entry);
     this.modalService.openEntryDialog({ entry, type: 'edit' });
   }
 
@@ -144,7 +141,6 @@ export class CreditEntriesTableComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe((name: string) => {
-      console.log('The dialog was closed', name);
       this.remove(name);
     });
   }
@@ -174,33 +170,44 @@ export class CreditEntriesTableComponent implements OnInit {
 
   onApplyToggle(entry: Entry, event: MatCheckboxChange) {
     this.dataSource.data.forEach(en => {
-      if(en.name === entry.name)
+      if (en.name === entry.name)
         en.apply = event.checked;
     });
+    this.leastInterestMode = false;
     this.calculate();
   }
 
   calculate() {
-    let balanceTotal = this.dataSource.data.reduce((a: any, b: Entry) => { return a + b.balance; }, 0);
+    let val = this.available;
+    if (this.leastInterestMode && this.available)
+      val = this.calculateLeast();
+    else
+      val = this.calculateData(this.dataSource.data, this.available);
 
-    if (this.available > balanceTotal) {
-      this.available = balanceTotal;
+    this.available = val;
+  }
+
+  calculateData(data: Entry[], available: number): number {
+    let balanceTotal = data.reduce((a: any, b: Entry) => { return a + b.balance; }, 0);
+
+    if (available > balanceTotal) {
+      available = balanceTotal;
     }
 
-    let totalInterest = this.dataSource.data.reduce((a: any, b: Entry) => { return a + b.interestAmount;}, 0);
-    let sortedData = this.dataSource.data.sort((a, b) => (b.interestRelPercent) || 0 - (a.interestRelPercent || 0));
+    let totalInterest = data.reduce((a: any, b: Entry) => { return a + b.interestAmount; }, 0);
+    let sortedData = data.sort((a, b) => (b.interestRelPercent) || 0 - (a.interestRelPercent || 0));
 
     sortedData.forEach((entry, index) => {
       entry.interestRelPercent = (entry.interestAmount! / totalInterest);
-      entry.payment = entry.apply ? this.getAdjustedAmount(entry.balance, this.available * entry.interestRelPercent!) : 0;
-      entry.paymentPercent = entry.payment / (this.available > balanceTotal ? balanceTotal : this.available);
+      entry.payment = entry.apply ? this.getAdjustedAmount(entry.balance, available * entry.interestRelPercent!) : 0;
+      entry.paymentPercent = entry.payment / (available > balanceTotal ? balanceTotal : available);
       entry.newBalance = entry.balance - entry.payment;
       entry.newInterest = entry.newBalance ? (entry.newBalance * entry.apr) / 1200 : 0;
-      entry.newUsage = entry.newBalance/entry.limit;
+      entry.newUsage = entry.newBalance / entry.limit;
       this.distributetRelPrecentages(sortedData, index, totalInterest, entry.interestRelPercent - entry.paymentPercent);
     });
-    this.distributeRemainingBalance(sortedData);
-    console.log(this.dataSource.data);
+    this.distributeRemainingBalance(sortedData, available);
+    return available;
   }
 
   getAdjustedAmount(balance: number, payment: number) {
@@ -215,37 +222,81 @@ export class CreditEntriesTableComponent implements OnInit {
     if (overflow && index + 1 < this.dataSource.data.length) {
       let nextVal = this.dataSource.data[index + 1];
       let nextRelPercent = (nextVal.interestAmount! / totalInterest);
-      let totalRelPercent: number =  0;
+      let totalRelPercent: number = 0;
       sortedData.forEach((en: Entry, ind: number) => {
-         if(ind >= index) totalRelPercent = en.interestRelPercent!;
+        if (ind >= index) totalRelPercent = en.interestRelPercent!;
       });
-      let relRelPercent = nextVal.interestRelPercent!/totalRelPercent;
+      let relRelPercent = nextVal.interestRelPercent! / totalRelPercent;
       this.dataSource.data[index + 1]!.interestRelPercent = relRelPercent * overflow;
-      this.distributetRelPrecentages(sortedData, index + 1, totalInterest, (1-relRelPercent) * overflow);
+      this.distributetRelPrecentages(sortedData, index + 1, totalInterest, (1 - relRelPercent) * overflow);
     }
   }
 
-  distributeRemainingBalance(entries: Entry[]) {
-    let balanceTotal = this.dataSource.data.reduce((a: any, b: Entry) => { return a + b.balance; }, 0);
+  distributeRemainingBalance(entries: Entry[], available: number) {
+    let balanceTotal = entries.reduce((a: any, b: Entry) => { return a + b.balance; }, 0);
     entries.forEach((entry: Entry) => {
       if (entry.payment! < entry.balance && entry.apply) {
-        let paymentTotal = this.dataSource.data.reduce((a: any, b: Entry) => { return a + b.payment; }, 0);
-        let newPayment = entry.payment! + (this.available - paymentTotal);
+        let paymentTotal = entries.reduce((a: any, b: Entry) => { return a + b.payment; }, 0);
+        let newPayment = entry.payment! + (available - paymentTotal);
         let adjustedPayment = this.getAdjustedAmount(entry.balance, newPayment);
         entry.payment = entry.apply ? adjustedPayment : 0;
-        entry.paymentPercent = entry.payment / (this.available > balanceTotal ? balanceTotal : this.available);
+        entry.paymentPercent = entry.payment / (available > balanceTotal ? balanceTotal : available);
         entry.newBalance = entry.balance - entry.payment;
         entry.newInterest = entry.newBalance ? (entry.newBalance * entry.apr) / 1200 : 0;
-        entry.newUsage = entry.newBalance/entry.limit;
+        entry.newUsage = entry.newBalance / entry.limit;
       }
     });
   }
 
+  calculateLeast() {
+    let data = [...this.dataSource.data];
+    let samples = 20;
+    let totalBalance = data.reduce((a: any, b: Entry) => { return a + b.balance; }, 0);
+    let avail = this.available;
+
+    if (avail > totalBalance) {
+      avail = totalBalance;
+    }
+    let n = data.length;
+    let binary = this.generateStates(n);
+
+    let lowestIntData: any = [];
+    let lowestInt = avail;
+    let lowestBinary: string[] = [];
+
+    binary.forEach((item) => {
+      let binArr = item.match(/.{1}/g);
+      let c = 0;
+      binArr && data.forEach(entry => {
+        entry.apply = binArr![c] === '1';
+        c++;
+      });
+      this.calculateData(data, avail);
+      let newInterest = data.reduce((a: any, b: Entry) => { return a + b.newInterest; }, 0);
+      if (newInterest < lowestInt) {
+        lowestIntData = data.map(a => ({ ...a }));
+        lowestInt = newInterest;
+        lowestBinary = binArr!;
+      }
+    });
+    this.dataSource.data = lowestIntData;
+    return avail;
+  }
+
+  generateStates(n: number) {
+    var states = [];
+
+    var maxDecimal = parseInt("1".repeat(n), 2);
+
+    for (var i = 0; i <= maxDecimal; i++) {
+      states.push(i.toString(2).padStart(n, '0'));
+    }
+
+    return states;
+  }
   announceSortChange(sortState: Sort) {
     if (sortState.direction) {
-      console.log(`Sorted ${sortState.direction}ending`);
     } else {
-      console.log('Sorting cleared');
     }
   }
 
