@@ -1,0 +1,29 @@
+<h1 mat-dialog-title>{{data.type ? 'Edit' : 'Add'}}</h1>
+<form [formGroup]="addEntryForm" (ngSubmit)="onSubmit()">
+    <div mat-dialog-content>
+        <mat-form-field appearance="fill">
+            <mat-label>Name</mat-label>
+            <input matInput cdkFocusInitial formControlName="name" name="name" type="text" required="required"
+                pattern="[A-Za-z0-9]{1,20}">
+        </mat-form-field>
+        <mat-form-field appearance="fill">
+            <mat-label>Limit</mat-label>
+            <input matInput formControlName="limit" name="limit" type="number" min="1" step="1000">
+        </mat-form-field>
+        <mat-form-field appearance="fill">
+            <mat-label>APR</mat-label>
+            <input matInput formControlName="apr" name="apr" type="number" min="1" step="0.50">
+        </mat-form-field>
+        <mat-form-field appearance="fill">
+            <mat-label>Balance</mat-label>
+            <input matInput formControlName="balance" name="balance" type="number" type="number" step="1000">
+        </mat-form-field>
+        <mat-error *ngIf="errorStatus === 1">Already existed</mat-error>
+        <mat-error *ngIf="errorStatus === 2">Not found</mat-error>
+        <mat-error *ngIf="errorStatus === 3">An error occured</mat-error>
+    </div>
+    <div mat-dialog-actions>
+        <button mat-button [mat-dialog-close]>Cancel</button>
+        <button mat-button type="submit">Save</button>
+    </div>
+</form>
